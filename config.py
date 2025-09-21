@@ -34,23 +34,37 @@ def get_config():
 
 def get_secrets():
     """Get API keys from appropriate source"""
-    try:
-        # Try Streamlit secrets first (production)
-        if hasattr(st, 'secrets'):
-            return {
-                'besttime_private': st.secrets["BESTTIME_API_KEY_PRIVATE"],
-                'besttime_public': st.secrets["BESTTIME_API_KEY_PUBLIC"],
-                'google_maps': st.secrets["GOOGLE_MAPS_API_KEY"]
+    import streamlit as st
+
+    # Check if running on Streamlit Cloud
+    if hasattr(st, 'secrets') and len(st.secrets) > 0:
+        try:
+            secrets = {
+                'besttime_private': st.secrets.get("BESTTIME_API_KEY_PRIVATE"),
+                'besttime_public': st.secrets.get("BESTTIME_API_KEY_PUBLIC"),
+                'google_maps': st.secrets.get("GOOGLE_MAPS_API_KEY")
             }
-    except:
-        pass
+
+            # Debug info for production
+            if get_config()['debug_mode'] or True:  # Always show in production for now
+                st.info(f"🔑 Loaded secrets: BestTime={'✓' if secrets['besttime_private'] else '✗'}, Google Maps={'✓' if secrets['google_maps'] else '✗'}")
+                if secrets['google_maps']:
+                    st.success(f"✅ Google Maps API Key: {secrets['google_maps'][:20]}...")
+                else:
+                    st.error("❌ Google Maps API Key not found in secrets")
+
+            return secrets
+        except Exception as e:
+            st.error(f"Error loading secrets: {e}")
 
     # Fallback to .env file (local)
     from dotenv import load_dotenv
     load_dotenv()
 
-    return {
+    secrets = {
         'besttime_private': os.getenv("BESTTIME_API_KEY_PRIVATE"),
         'besttime_public': os.getenv("BESTTIME_API_KEY_PUBLIC"),
         'google_maps': os.getenv("GOOGLE_MAPS_API_KEY")
     }
+
+    return secrets

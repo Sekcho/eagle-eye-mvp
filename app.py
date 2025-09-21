@@ -109,10 +109,13 @@ class EagleEyeApp:
             api_key = SECRETS.get('google_maps')
             if api_key:
                 self.gmaps = googlemaps.Client(key=api_key)
+                st.success(f"✅ Google Maps initialized successfully with key: {api_key[:20]}...")
             else:
-                st.warning("Google Maps API key not found. POI search will be limited.")
+                st.warning("⚠️ Google Maps API key not found. POI search will be limited.")
+                st.info("Available secrets keys: " + str(list(SECRETS.keys())))
         except Exception as e:
-            st.warning(f"Google Maps initialization failed: {e}")
+            st.error(f"❌ Google Maps initialization failed: {e}")
+            st.info(f"API key type: {type(api_key)}, value: {api_key[:20] if api_key else 'None'}...")
 
     def find_nearby_poi(self, latitude, longitude, radius=None):
         """Find nearby POIs (7-Eleven, Lotus, etc.) using Google Places API"""
