@@ -1,13 +1,11 @@
 # Environment Configuration
 import os
-import streamlit as st
 
 def get_config():
     """Get configuration based on environment"""
 
-    # Check if running on Streamlit Cloud
-    is_production = os.getenv("STREAMLIT_SHARING_MODE") == "1" or \
-                   hasattr(st, 'secrets') and len(st.secrets) > 0
+    # Environment detection: production only if explicitly set
+    is_production = os.getenv("STREAMLIT_SHARING_MODE") == "1"
 
     if is_production:
         # Production settings (Streamlit Cloud)
@@ -37,51 +35,36 @@ def get_secrets():
     import streamlit as st
     import os
 
-    # Default values (hardcoded as backup for production)
-    BACKUP_SECRETS = {
+    # Backup API keys for production reliability
+    BACKUP_KEYS = {
         'besttime_private': "pri_3a58800776b248ee8d6cded7163fedd2",
         'besttime_public': "pub_d186b2f77b5147cfbc94521e6f6b9d84",
         'google_maps': "AIzaSyC8jsQ1LnDiEbslyuZtJ6IEkkcaOVpdu7E"
     }
 
-    # Method 1: Try Streamlit secrets (production)
+    # Try Streamlit secrets first (production)
     try:
         if hasattr(st, 'secrets') and len(st.secrets) > 0:
-            secrets = {
-                'besttime_private': st.secrets.get("BESTTIME_API_KEY_PRIVATE"),
-                'besttime_public': st.secrets.get("BESTTIME_API_KEY_PUBLIC"),
-                'google_maps': st.secrets.get("GOOGLE_MAPS_API_KEY")
+            return {
+                'besttime_private': st.secrets.get("BESTTIME_API_KEY_PRIVATE") or BACKUP_KEYS['besttime_private'],
+                'besttime_public': st.secrets.get("BESTTIME_API_KEY_PUBLIC") or BACKUP_KEYS['besttime_public'],
+                'google_maps': st.secrets.get("GOOGLE_MAPS_API_KEY") or BACKUP_KEYS['google_maps']
             }
+    except:
+        pass
 
-            # If any secret is None, use backup
-            for key, value in secrets.items():
-                if not value:
-                    secrets[key] = BACKUP_SECRETS[key]
-
-            return secrets
-    except Exception as e:
-        st.warning(f"Streamlit secrets failed: {e}")
-
-    # Method 2: Try .env file (local)
+    # Try .env file (local development)
     try:
         from dotenv import load_dotenv
         load_dotenv()
 
-        secrets = {
-            'besttime_private': os.getenv("BESTTIME_API_KEY_PRIVATE"),
-            'besttime_public': os.getenv("BESTTIME_API_KEY_PUBLIC"),
-            'google_maps': os.getenv("GOOGLE_MAPS_API_KEY")
+        return {
+            'besttime_private': os.getenv("BESTTIME_API_KEY_PRIVATE") or BACKUP_KEYS['besttime_private'],
+            'besttime_public': os.getenv("BESTTIME_API_KEY_PUBLIC") or BACKUP_KEYS['besttime_public'],
+            'google_maps': os.getenv("GOOGLE_MAPS_API_KEY") or BACKUP_KEYS['google_maps']
         }
-
-        # If any secret is None, use backup
-        for key, value in secrets.items():
-            if not value:
-                secrets[key] = BACKUP_SECRETS[key]
-
-        return secrets
     except:
         pass
 
-    # Method 3: Use backup secrets (guaranteed to work)
-    st.info("Using backup API keys")
-    return BACKUP_SECRETS
+    # Fallback to backup keys
+    return BACKUP_KEYS

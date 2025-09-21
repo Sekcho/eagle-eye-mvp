@@ -1,38 +1,7 @@
 """
 🦅 Eagle Eye Sales Intelligence Dashboard
-Streamlit-based web application for door-to-door sales optimization
-
-OVERVIEW:
---------
-Advanced sales intelligence system combining L2 infrastructure data with
-real-time foot traffic analysis for optimal door-to-door sales routing.
-
-KEY FEATURES:
-------------
-✅ Location-Based POI Search: Google Places API integration for venue discovery
-✅ Real BestTime API Integration: Live foot traffic timing data
-✅ Coordinate Deduplication: Handles 20K+ Happy Blocks with smart offset logic
-✅ Hierarchical Filtering: Province → District → Subdistrict → Village
-✅ Intelligent Fallback: Generated timing when API data unavailable
-✅ Export Capabilities: Excel reports with dual-level data structure
-
-RECENT IMPROVEMENTS (2025-09-21):
----------------------------------
-🔧 Fixed duplicate coordinates issue (20,915 blocks → 450 unique coords)
-🔧 Implemented deterministic coordinate offsetting for unique POI discovery
-🔧 Enhanced POI naming with distance/unique ID for differentiation
-🔧 Location-specific timing generation based on venue type
-🔧 Improved error handling for BestTime API 404 responses
-
-TECHNICAL NOTES:
----------------
-- Database: 1M+ L2 records, 50K sample for performance
-- Coverage: 14 provinces, 146 districts, 5,850 villages
-- POI Search: 2km radius, prioritizes 7-Eleven > Lotus > Big C
-- Caching: Multi-level with coordinate precision to 6 decimal places
-- Timing Patterns: Venue-specific with geographic variation
-
-For detailed documentation, see: CLAUDE.md
+Advanced sales intelligence system for door-to-door sales optimization
+combining L2 infrastructure data with real-time foot traffic analysis.
 """
 
 import streamlit as st
@@ -109,13 +78,16 @@ class EagleEyeApp:
             api_key = SECRETS.get('google_maps')
             if api_key:
                 self.gmaps = googlemaps.Client(key=api_key)
-                st.success(f"✅ Google Maps initialized successfully with key: {api_key[:20]}...")
+                if CONFIG['debug_mode']:
+                    st.success(f"✅ Google Maps initialized successfully")
             else:
-                st.warning("⚠️ Google Maps API key not found. POI search will be limited.")
-                st.info("Available secrets keys: " + str(list(SECRETS.keys())))
+                if CONFIG['debug_mode']:
+                    st.warning("⚠️ Google Maps API key not found. POI search will be limited.")
         except Exception as e:
-            st.error(f"❌ Google Maps initialization failed: {e}")
-            st.info(f"API key type: {type(api_key)}, value: {api_key[:20] if api_key else 'None'}...")
+            if CONFIG['debug_mode']:
+                st.error(f"❌ Google Maps initialization failed: {e}")
+            else:
+                st.warning("Google Maps client not initialized - using fallback data")
 
     def find_nearby_poi(self, latitude, longitude, radius=None):
         """Find nearby POIs (7-Eleven, Lotus, etc.) using Google Places API"""
@@ -726,8 +698,8 @@ def main():
         with col_d:
             st.metric("Villages", len(areas['villages']))
 
-        # Debug info
-        if st.checkbox("🔍 Show Debug Info", value=CONFIG['debug_mode']):
+        # Debug info (only in development)
+        if CONFIG['debug_mode'] and st.checkbox("🔍 Show Debug Info", value=True):
             st.write("**Available Provinces:**", areas['provinces'][:10])
             if province != "-- เลือกจังหวัด --":
                 province_data = happy_blocks_df[happy_blocks_df['Province'] == province]
