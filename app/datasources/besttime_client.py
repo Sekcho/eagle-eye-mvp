@@ -140,5 +140,6 @@ def get_corrected_timing_from_besttime(besttime_data: dict) -> dict:
             'best_day': 'Tuesday',
             'activity_level': 'Medium',
             'timing_status': 'besttime_fallback',
-            'poi_confidence': 'MEDIUM'
+            'poi_confidence': 'MEDIUM',
+            'data_source': 'BestTime API (error fallback)'
         }

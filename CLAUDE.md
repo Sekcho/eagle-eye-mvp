@@ -12,24 +12,39 @@ Eagle Eye is a comprehensive sales intelligence system for door-to-door sales op
 
 ## 🔧 Recent Major Improvements (2025-09-21)
 
-### 1. Location-Based POI Search System
+### 1. Enhanced POI Search System with Smart Fallbacks (FIXED 2025-09-21)
 
-**Problem Solved:** Generic POI references (e.g., "ฉัตรทอง" referring to Burger King in Hat Yai instead of local venues)
+**Problem Identified:** Happy Block coordinates were in rural areas with **no convenience stores within 2km**, causing system to return "Community Store (Generic)" fallback data.
 
-**Solution Implemented:**
+**Root Cause Analysis:**
+- Google Maps API working correctly but finding 0 POIs at coordinates like (7.100000, 100.600000)
+- Hat Yai center (7.008900, 100.468100) found 10 real POIs including 5x 7-Eleven stores
+- Remote Happy Block locations lack nearby convenience stores
+
+**Multi-Layer Solution Implemented:**
 ```python
 def find_nearby_poi(self, latitude, longitude, radius=2000):
-    """Find nearby POIs (7-Eleven, Lotus, etc.) using Google Places API"""
-    # Searches for convenience stores and restaurants within 2km
-    # Prioritizes: 7-Eleven > Lotus > Big C > Others
-    # Returns up to 3 POIs with rating and location data
+    """Find nearby POIs with intelligent fallback system"""
+    # Layer 1: Search local area (2km radius)
+    # Layer 2: Search nearby Happy Blocks (15km radius, 5km POI search)
+    # Layer 3: Generate area-appropriate store types
+    # Layer 4: Location-specific timing patterns
+
+def find_nearby_convenience_store_fallback(self, latitude, longitude, happy_blocks_df):
+    """Enhanced fallback: search 10 nearest Happy Blocks within 15km for real POIs"""
+    # Returns: "7-Eleven (ใกล้ Village_Name) - 5.2km"
 ```
 
-**Key Features:**
-- Real Google Places API integration
-- Priority-based POI selection
-- Location-specific search within 2km radius
-- Fallback to generated timing when BestTime API returns 404
+**Enhanced Fallback Logic:**
+1. **Local Search**: Real convenience stores within 2km of Happy Block
+2. **Nearby Block Search**: Search 10 nearest Happy Blocks within 15km for real POIs
+3. **Area-Based Generation**: Smart store type based on district characteristics
+4. **Location-Specific Timing**: All fallbacks use venue-appropriate timing patterns
+
+**Success Results:**
+- ✅ **Before**: "Community Store (Generic)"
+- ✅ **After**: "7-Eleven - อาคารกิจกรรม/ศูนย์อาหาร (1.3km)"
+- ✅ **Data Source**: "BestTime API - 7-Eleven (Location-specific)"
 
 ### 2. Coordinate Deduplication System
 
@@ -206,6 +221,42 @@ find . -name "*.pyc" -delete
 python -m streamlit run app.py
 ```
 
+## 🔧 POI System Debugging Process (2025-09-21)
+
+### Debug Methodology
+**Issue Reported**: "Community Store (Generic)" appearing instead of real convenience stores
+
+**Debugging Steps:**
+1. **Created test script** (`test_poi_search_simple.py`) to isolate Google Maps API calls
+2. **Tested coordinates directly**:
+   - Hat Yai center (7.008900, 100.468100): ✅ Found 10 target POIs (5x 7-Eleven)
+   - Report coordinates (7.100000, 100.600000): ❌ Found 0 target POIs
+3. **Root cause identified**: Rural Happy Block coordinates lack nearby convenience stores
+
+**Key Insights:**
+- Google Maps API working perfectly - the issue was geographic, not technical
+- Rural/remote Happy Block locations simply don't have convenience stores within 2km
+- Need intelligent fallback to search broader area for real POIs
+
+**Technical Solutions Applied:**
+- Enhanced fallback system searching nearby Happy Blocks within 15km
+- Real POI discovery from nearby urban areas
+- Location-specific timing generation
+- Fixed missing `data_source` field in BestTime client exception handler
+
+**Verification Results:**
+```
+Before: "Community Store (Generic)"
+After:  "7-Eleven - อาคารกิจกรรม/ศูนย์อาหาร (1.3km)"
+Source: "BestTime API - 7-Eleven (Location-specific)"
+```
+
+### Lessons Learned
+1. **Always test with real coordinates** - assumptions about POI availability can be wrong
+2. **Geographic context matters** - rural vs urban areas have different POI densities
+3. **Fallback systems need intelligence** - don't just return generic data, search smarter
+4. **Debug systematically** - isolate API calls from application logic
+
 ## 🔮 Future Enhancement Opportunities
 
 ### 1. Advanced POI Intelligence
@@ -271,7 +322,15 @@ print(f"Unique Coordinates: {len(df[['Latitude', 'Longitude']].drop_duplicates()
 
 ---
 
-**Last Updated:** 2025-09-21
-**System Status:** ✅ Fully Operational
-**Key Features:** Location-based POI search, coordinate deduplication, enhanced timing generation
-**Next Priority:** ML-based sales prediction integration
+**Last Updated:** 2025-09-21 20:46 (POI System Fixed)
+**System Status:** ✅ Fully Operational - POI Issue Resolved
+**Key Features:** Smart POI fallback system, real convenience store discovery, location-specific timing
+**Recent Fix:** Enhanced POI search with 4-layer fallback system - now returns real convenience stores instead of generic fallback
+**Next Priority:** Performance optimization and ML-based sales prediction integration
+
+### 🎯 Current System Performance
+- **POI Discovery Success**: ✅ Real convenience stores with distance information
+- **Example Output**: "7-Eleven - อาคารกิจกรรม/ศูนย์อาหาร (1.3km)"
+- **Fallback Intelligence**: 4-layer system (Local → Nearby → Area-based → Generic)
+- **Data Sources**: BestTime API + Google Places API + Location-specific timing
+- **Server**: Running on multiple ports (8502, 8503, 8504, 8505) for testing
