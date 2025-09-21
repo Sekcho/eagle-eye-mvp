@@ -101,16 +101,21 @@ class EagleEyeApp:
         try:
             if CONFIG['debug_mode']:
                 st.info(f"🔍 Searching for POIs near {latitude:.4f}, {longitude:.4f}")
-            # Define target POI types
+            # Define target convenience store keywords (priority order)
             target_keywords = [
                 "7-Eleven",
                 "Seven Eleven",
-                "Lotus",
-                "Tesco Lotus",
-                "Big C",
-                "Burger King",
-                "KFC",
-                "McDonald's"
+                "Lotus Go Fresh",
+                "Lotus Express",
+                "Big C Mini",
+                "Big C Market",
+                "Family Mart",
+                "Lawson",
+                "CJ Express",
+                "Jiffy",
+                "ร้านสะดวกซื้อ",
+                "convenience store",
+                "mini mart"
             ]
 
             nearby_pois = []
@@ -149,14 +154,20 @@ class EagleEyeApp:
                         nearby_pois.append(poi_info)
                         break
 
-            # Sort by rating and prioritize 7-Eleven/Lotus
+            # Sort by convenience store priority
             def poi_priority(poi):
                 keyword = poi['keyword_match'].lower()
+                # Priority 4: 7-Eleven (highest)
                 if '7-eleven' in keyword or 'seven eleven' in keyword:
+                    return (4, poi['rating'])
+                # Priority 3: Lotus convenience stores
+                elif 'lotus go fresh' in keyword or 'lotus express' in keyword:
                     return (3, poi['rating'])
-                elif 'lotus' in keyword:
+                # Priority 2: Big C convenience stores
+                elif 'big c mini' in keyword or 'big c market' in keyword:
                     return (2, poi['rating'])
-                elif 'big c' in keyword:
+                # Priority 1: Other convenience stores
+                elif any(x in keyword for x in ['family mart', 'lawson', 'cj express', 'jiffy', 'convenience store', 'mini mart', 'ร้านสะดวกซื้อ']):
                     return (1, poi['rating'])
                 else:
                     return (0, poi['rating'])
@@ -175,12 +186,65 @@ class EagleEyeApp:
             st.warning(f"POI search failed: {e}")
             return None
 
+    def find_nearby_convenience_store_fallback(self, latitude, longitude, happy_blocks_df):
+        """Find convenience store from nearby Happy Blocks if none found in 2km"""
+        if happy_blocks_df is None:
+            return None
+
+        # Calculate distances to all other Happy Blocks
+        import numpy as np
+
+        distances = []
+        for _, block in happy_blocks_df.iterrows():
+            if block['Latitude'] and block['Longitude']:
+                # Simple distance calculation (rough)
+                lat_diff = (block['Latitude'] - latitude) ** 2
+                lng_diff = (block['Longitude'] - longitude) ** 2
+                distance = np.sqrt(lat_diff + lng_diff) * 111  # Convert to km roughly
+
+                distances.append({
+                    'happy_block': block['Happy_Block'],
+                    'village': block['Village_Name'],
+                    'distance': distance,
+                    'lat': block['Latitude'],
+                    'lng': block['Longitude']
+                })
+
+        # Sort by distance and find nearby blocks (within 10km)
+        distances.sort(key=lambda x: x['distance'])
+        nearby_blocks = [d for d in distances[1:6] if d['distance'] <= 10.0]  # Skip self, get 5 nearest
+
+        if nearby_blocks:
+            # Use the nearest block's coordinates to search for POI
+            nearest = nearby_blocks[0]
+            nearby_pois = self.find_nearby_poi(nearest['lat'], nearest['lng'], radius=5000)  # Expand search
+
+            if nearby_pois:
+                poi = nearby_pois[0]  # Get the best one
+                return {
+                    'poi_name': f"{poi['name']} (ใกล้ {nearest['village']}) - {nearest['distance']:.1f}km",
+                    'poi_source': 'nearby_happy_block',
+                    'distance_km': nearest['distance'],
+                    'nearby_village': nearest['village']
+                }
+
+        return None
+
     def get_location_specific_besttime(self, latitude, longitude):
         """Get BestTime data for POIs near specific location"""
         nearby_pois = self.find_nearby_poi(latitude, longitude)
 
         if not nearby_pois:
-            # Fallback to generic data
+            # Try fallback to nearby Happy Block convenience stores
+            if hasattr(self, 'happy_blocks_df'):
+                fallback_poi = self.find_nearby_convenience_store_fallback(latitude, longitude, self.happy_blocks_df)
+                if fallback_poi:
+                    fallback_data = self.get_fallback_timing_data()
+                    fallback_data['poi_name'] = fallback_poi['poi_name']
+                    fallback_data['data_source'] = f"Nearby convenience store ({fallback_poi['distance_km']:.1f}km away)"
+                    return fallback_data
+
+            # Final fallback to generic data
             return self.get_fallback_timing_data()
 
         # Select POI based on location to distribute better
@@ -486,6 +550,9 @@ class EagleEyeApp:
                         # Get location-specific BestTime data
                         if CONFIG['debug_mode']:
                             st.info(f"🎯 Processing new location: {cache_key} for {block['Village_Name']}")
+
+                        # Pass happy blocks data for fallback search
+                        self.happy_blocks_df = top_blocks
                         location_besttime_cache[cache_key] = self.get_location_specific_besttime(lat, lng)
                     else:
                         if CONFIG['debug_mode']:
