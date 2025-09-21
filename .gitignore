@@ -1,0 +1,38 @@
+# Environment files
+.env
+.env.local
+.env.production
+
+# Streamlit secrets (will be manually added to cloud)
+.streamlit/secrets.toml
+
+# Google Cloud credentials
+*.json
+credentials/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
