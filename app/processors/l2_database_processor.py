@@ -112,8 +112,8 @@ class L2DatabaseProcessor:
         """Aggregate L2 data by Happy Block with Sales Zone support"""
         print("Aggregating data by Happy Block with Sales Zone approach...")
 
-        # Group by Happy Block and Village
-        grouped = self.df.groupby(['happy_block', 'Rollout Location name']).agg({
+        # Group by Happy Block only (not by village to avoid splitting multi-village blocks)
+        grouped = self.df.groupby(['happy_block']).agg({
             'splt_l2': 'count',                    # L2 count
             'sum_tol_avail': 'sum',               # Total ports available
             'tol_avail_by_hhb': 'first',          # Happy block total ports
@@ -121,6 +121,7 @@ class L2DatabaseProcessor:
             'inservice_aging': 'mean',            # Average aging
             'lat_happy_block': 'first',           # Happy block coordinates
             'long_happy_block': 'first',
+            'Rollout Location name': 'first',    # Primary village name
             'Province': 'first',
             'District': 'first',
             'Subdistrict': 'first',
@@ -133,13 +134,17 @@ class L2DatabaseProcessor:
         grouped.columns = [
             'L2_Count', 'Total_Ports_Available', 'HHB_Ports_Available',
             'Priority_Score', 'Avg_Aging_Days', 'Latitude', 'Longitude',
-            'Province', 'District', 'Subdistrict', 'Location_Type',
+            'Village_Name', 'Province', 'District', 'Subdistrict', 'Location_Type',
             'Installation_Status', 'Priority_Label'
         ]
 
-        # Reset index to get happy_block and village_name as columns
+        # Reset index to get happy_block as column
         grouped = grouped.reset_index()
-        grouped.columns = ['Happy_Block', 'Village_Name'] + list(grouped.columns[2:])
+        grouped = grouped[['happy_block', 'Village_Name', 'L2_Count', 'Total_Ports_Available',
+                          'HHB_Ports_Available', 'Priority_Score', 'Avg_Aging_Days',
+                          'Latitude', 'Longitude', 'Province', 'District', 'Subdistrict',
+                          'Location_Type', 'Installation_Status', 'Priority_Label']]
+        grouped.columns = ['Happy_Block'] + list(grouped.columns[1:])
 
         self.happy_blocks_df = grouped
         print(f"Created {len(grouped):,} Happy Block aggregations")

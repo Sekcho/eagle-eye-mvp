@@ -22,7 +22,7 @@ def get_config():
         # Local development settings
         return {
             'csv_path': 'data/South L2 Ports Utilization on W25036_20250905.csv',
-            'sample_size': 50000,  # Full performance locally
+            'sample_size': None,  # Use full dataset locally
             'cache_ttl': 14 * 24 * 3600,  # 14 days cache
             'debug_mode': True,
             'max_happy_blocks': 50,

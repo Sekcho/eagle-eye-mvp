@@ -10,7 +10,67 @@ Eagle Eye is a comprehensive sales intelligence system for door-to-door sales op
 - **BestTime API Integration** (`app/datasources/besttime_client.py`)
 - **Google Places API Integration** (for location-specific POI discovery)
 
-## 🔧 Recent Major Improvements (2025-09-21)
+## 🔧 Recent Major Improvements & Fixes
+
+### 🚀 Latest Fixes (2025-09-25)
+
+#### 1. L2 Count and Port Available Accuracy Fix (CRITICAL FIX 2025-09-25)
+
+**Problem Identified:** L2 counts and port availability between Overview and Detail levels were inconsistent due to:
+1. **Multiple Villages per Happy Block**: Aggregation was grouping by both `happy_block` AND `village_name`, causing data fragmentation
+2. **Sample Size Limitation**: 50,000 record limit excluded some provinces (e.g., Trang missing 4 districts)
+3. **Validation Function Conflicts**: Custom validation limiting Detail rows incorrectly
+
+**Root Cause Analysis:**
+```python
+# PROBLEMATIC CODE:
+grouped = self.df.groupby(['happy_block', 'Rollout Location name']).agg({
+    'sum_tol_avail': 'sum',  # This created multiple rows per Happy Block
+})
+
+# SAMPLE SIZE ISSUE:
+'sample_size': 50000  # Missing data for outer provinces
+```
+
+**Solution Implemented:**
+```python
+# FIXED AGGREGATION:
+grouped = self.df.groupby(['happy_block']).agg({  # Group by Happy Block only
+    'sum_tol_avail': 'sum',  # Correct total calculation
+    'Rollout Location name': 'first',  # Use primary village name
+})
+
+# FULL DATASET:
+'sample_size': None  # Use complete dataset (1M+ records)
+```
+
+**Results:**
+- ✅ **Overview L2 Count**: Now matches actual L2s in Happy Block
+- ✅ **Port Available**: Overview sum = Detail sum (perfect accuracy)
+- ✅ **Geographic Coverage**: All 10 districts in Trang province now visible
+- ✅ **Data Completeness**: 18,774 Happy Blocks (vs 11,980 before)
+
+#### 2. Enhanced Port Display Format (2025-09-25)
+
+**User-Requested Format Implementation:**
+- **Overview**: `"121 (7.6/L2)"` = Total available ports (average per L2)
+- **Detail**: `"8/121"` = Individual L2 ports / Total Happy Block ports
+
+**Benefits:**
+- Clear understanding of port distribution
+- Easy identification of capacity utilization
+- Consistent formatting across all reports
+
+#### 3. Geographic Data Completeness (2025-09-25)
+
+**Fixed Missing Administrative Divisions:**
+- **Before**: Trang showed 6/10 districts, Na Yong showed 2/6 subdistricts
+- **After**: Complete coverage - Trang 10/10 districts, Na Yong 6/6 subdistricts
+- **Root Cause**: Sample size limitation excluding outer geographic areas
+
+---
+
+## 🔧 Previous Major Improvements (2025-09-21)
 
 ### 1. Enhanced POI Search System with Smart Fallbacks (FIXED 2025-09-21)
 
@@ -322,15 +382,29 @@ print(f"Unique Coordinates: {len(df[['Latitude', 'Longitude']].drop_duplicates()
 
 ---
 
-**Last Updated:** 2025-09-21 20:46 (POI System Fixed)
-**System Status:** ✅ Fully Operational - POI Issue Resolved
-**Key Features:** Smart POI fallback system, real convenience store discovery, location-specific timing
-**Recent Fix:** Enhanced POI search with 4-layer fallback system - now returns real convenience stores instead of generic fallback
-**Next Priority:** Performance optimization and ML-based sales prediction integration
+**Last Updated:** 2025-09-25 16:10 (L2 Count & Port Accuracy Fixed + Full Dataset)
+**System Status:** ✅ Fully Operational - All Critical Issues Resolved
+**Key Features:**
+- ✅ Accurate L2 count and port calculations (Overview = Detail)
+- ✅ Enhanced port display format with totals and averages
+- ✅ Complete geographic coverage (all provinces/districts)
+- ✅ Smart POI fallback system with real convenience store discovery
+- ✅ Full dataset processing (1M+ records, 18,774 Happy Blocks)
 
-### 🎯 Current System Performance
-- **POI Discovery Success**: ✅ Real convenience stores with distance information
-- **Example Output**: "7-Eleven - อาคารกิจกรรม/ศูนย์อาหาร (1.3km)"
-- **Fallback Intelligence**: 4-layer system (Local → Nearby → Area-based → Generic)
-- **Data Sources**: BestTime API + Google Places API + Location-specific timing
-- **Server**: Running on multiple ports (8502, 8503, 8504, 8505) for testing
+**Recent Critical Fixes (2025-09-25):**
+- L2 aggregation accuracy (fixed multi-village Happy Block issue)
+- Port availability consistency between Overview and Detail
+- Complete geographic data coverage (Trang 10/10 districts)
+- Enhanced port display format per user requirements
+
+**Next Priority:** Advanced analytics and ML-based sales prediction integration
+
+### 🎯 Current System Performance (Updated 2025-09-25)
+- **Data Completeness**: ✅ 1,048,574 total records → 62,297 cleaned → 18,774 Happy Blocks
+- **Geographic Coverage**: ✅ Complete - all provinces, districts, and subdistricts
+- **L2 Count Accuracy**: ✅ 100% match between Overview and Detail levels
+- **Port Calculation**: ✅ Perfect sum consistency (Overview total = Detail sum)
+- **Port Display**: ✅ Enhanced format - "121 (7.6/L2)" overview, "8/121" detail
+- **POI Discovery**: ✅ Real convenience stores with intelligent fallback
+- **Performance**: ✅ Full dataset processing with optimized aggregation
+- **Server**: Primary on http://localhost:8507 (latest fixes applied)

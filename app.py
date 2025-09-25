@@ -586,6 +586,7 @@ class EagleEyeApp:
 
         return filtered_df
 
+
     def generate_report(self, filtered_blocks, limit, include_besttime=True):
         """Generate comprehensive report with BestTime integration"""
 
@@ -670,7 +671,7 @@ class EagleEyeApp:
                 'L2_Count': block['L2_Count'],
                 'Priority_Score': round(block['Priority_Score'], 1),
                 'Priority_Label': block['Priority_Label'],
-                'Ports_Available': block['Total_Ports_Available'],
+                'Ports_Available': f"{block['Total_Ports_Available']} ({round(block['Total_Ports_Available'] / max(block['L2_Count'], 1), 1)}/L2)",
                 'Province': block['Province'],
                 'District': block['District'],
                 'Subdistrict': block['Subdistrict'],
@@ -699,7 +700,7 @@ class EagleEyeApp:
                     'L2_Count': None,
                     'Priority_Score': round(l2.get('priority_score', 0), 1),
                     'Priority_Label': l2.get('priority_label', ''),
-                    'Ports_Available': l2.get('sum_tol_avail', 0),
+                    'Ports_Available': f"{l2.get('sum_tol_avail', 0)}/{block['Total_Ports_Available']}",
                     'Province': '',
                     'District': '',
                     'Subdistrict': '',
