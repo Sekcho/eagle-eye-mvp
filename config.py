@@ -11,7 +11,7 @@ def get_config():
         # Production settings (Streamlit Cloud)
         return {
             'csv_path': 'data/South L2 Ports Utilization on W25036_20250905.csv',
-            'sample_size': 20000,  # Reduced for cloud memory limits
+            'sample_size': 80000,  # Increased for geographic completeness
             'cache_ttl': 3600,     # 1 hour cache
             'debug_mode': False,
             'max_happy_blocks': 25, # Limit report size
